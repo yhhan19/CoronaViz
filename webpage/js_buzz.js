@@ -92,7 +92,9 @@ function resetClickTimeout() {
   map.clicked = 0;
 }
 
-
+function percent(confirmed, population) {
+  return Math.trunc(confirmed * 100000 / population);
+}
 
 function getClosestMarker(latlng) {
   if (jhuLayer && jhuLayer.markers._gridClusters) {
@@ -146,10 +148,10 @@ info.update = function (confirmed, deaths, recoveries, active, placenames, popul
   placenames = placenamesString(placenames);
   this._div.innerHTML = (placenames !== undefined ? "<b>" + placenames + "</b><br>" : "") +
       "Population: " + population + "</br>" +
-      "Confirmed: " + confirmed + "</br>" +
-      "Deaths: " + deaths + "<br>" +
-      "Recoveries:" + recoveries + "<br>" +
-      "Active:" + active + "<br>";
+      "Confirmed: " + confirmed + " (" + percent(confirmed, population) + ")</br>" +
+      "Deaths: " + deaths + " (" + percent(deaths, population) + ")<br>" +
+      "Recoveries:" + recoveries + " (" + percent(recoveries, population) + ")<br>" +
+      "Active:" + active + " (" + percent(active, population) + ")<br>";
 };
 
 function placenamesString(placenames) {
@@ -175,10 +177,11 @@ function placenamesString(placenames) {
 
 function updateSidebarInfo(confirmed, deaths, recoveries, active, placenames, population) {
   placenames = placenamesString(placenames);
-  document.getElementById("sidebar_confirmed").innerHTML = normalizeCount(confirmed);
-  document.getElementById("sidebar_deaths").innerHTML = normalizeCount(deaths);
-  document.getElementById("sidebar_recoveries").innerHTML = normalizeCount(recoveries);
-  document.getElementById("sidebar_active").innerHTML = normalizeCount(active);
+  const comfirmInfo = normalizeCount(confirmed) + " (" + percent(normalizeCount(confirmed), population) + ")";
+  document.getElementById("sidebar_confirmed").innerHTML = comfirmInfo;
+  document.getElementById("sidebar_deaths").innerHTML = normalizeCount(deaths)+ " (" + percent(normalizeCount(deaths), population) + ")";
+  document.getElementById("sidebar_recoveries").innerHTML = normalizeCount(recoveries)+ " (" + percent(normalizeCount(recoveries), population) + ")";
+  document.getElementById("sidebar_active").innerHTML = normalizeCount(active)+ " (" + percent(normalizeCount(active), population) + ")";
   document.getElementById("sidebar_location").innerHTML = placenames;
   document.getElementById("sidebar_population").innerHTML = population;
 }
@@ -813,10 +816,17 @@ function normalizeCount(clusterSize) {
 function markerSize(clusterSize, confirmed=false, population) {
   clusterSize = clusterSize;//normalizeCount(clusterSize);
   if (pop_scale && population > 0) {
+    let windowSize = 0;
+    if (totalAnimation) {
+        windowSize = dateToEpochMins(dataEndDate) - dateToEpochMins(dataStartDate);
+    } else {
+        windowSize = animateWindow;
+    }
+    const scale = Math.log10((dateToEpochMins(dataEndDate) - dateToEpochMins(dataStartDate)) / windowSize) + 1;
     if (confirmed)
-      return 10 + clusterSize / (population / 20000);
+      return 10 + clusterSize / (population / 10000) * scale;
     else 
-      return 10 + clusterSize / (population / 80000);
+      return 10 + clusterSize / (population / 50000) * scale;
   }
   else if(log_scale || population < 0) {
     if (clusterSize <= 0) {
