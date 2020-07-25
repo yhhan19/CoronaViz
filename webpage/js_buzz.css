@@ -44,6 +44,14 @@ span.line {
   list-style-position: outside;
 }
 
+.bubble {
+  background: white;
+  color: black;
+  padding: 4px 12px;
+  position: absolute;
+  border-radius: 4px;
+  transform: translateX(-50%);
+}
 
 #slider-range {
   margin-left: 1em;

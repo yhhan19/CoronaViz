@@ -6,7 +6,8 @@
   <meta content='no-cache' http-equiv='cache-control'>
   <meta content='0' http-equiv='expires'>
   <meta content='no-cache' http-equiv='pragma'>
-
+     <!-- Range Slider CSS -->
+     <link rel="stylesheet" href="style.css">
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
         integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
@@ -222,10 +223,17 @@
           <div id="info"></div>
         </div>
         <p>
-         <input type="date" id="display_start_date" readonly style="border:0">
-         <input type="date" id="display_end_date" readonly style="border:0">
+          <label for="idate"> Input Date:</label>
+          <input type="date" id="display_start_date" readonly style="border:0">
+          <input type="date" id="display_end_date" readonly style="border:0">
         </p>
-        <div id="slider-range"></div>
+         <div>
+          <output class="bubble" id = "start"></output><br>
+         </div>
+        <div id="slider-range"></div>          
+        <div>
+          <output class="bubble" id = "end"></output>
+        </div>
       </div>
 
       <div id="control_panel" class="col-md-4">
@@ -274,9 +282,11 @@
 
           <br>
         <label for="log">Log:</label>
-        <input type="radio" name="scale" id="log" checked onclick="setLogScale(true)">
+        <input type="radio" name="scale" id="log" checked onclick="setLogScale(true);setPopScale(false)">
         <label for="line">Linear:</label>
-        <input type="radio" name="scale" id="line" onclick="setLogScale(false)">
+        <input type="radio" name="scale" id="line" onclick="setLogScale(false);setPopScale(false)">
+        <label for="line">Rate:</label>
+        <input type="radio" name="scale" id="rate" onclick="setLogScale(false);setPopScale(true)">
           <br>
 
         <label for="cumulative_animation">Cumulative:</label>
@@ -323,6 +333,7 @@
         <div>
           <h2> Animation Focus Data </h2>
           Location: <span id="sidebar_location">N/A</span><br>
+          Population: <span id="sidebar_population">N/A</span><br>
           Confirmed: <span id="sidebar_confirmed">N/A</span><br>
           Deaths: <span id="sidebar_deaths">N/A</span><br>
           Recoveries: <span id="sidebar_recoveries">N/A</span><br>

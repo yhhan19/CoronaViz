@@ -136,18 +136,21 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}' 
 let info = {};
 info._div = document.getElementById("info");
 
-info.update = function (confirmed, deaths, recoveries, active, placenames) {
+info.update = function (confirmed, deaths, recoveries, active, placenames, population) {
   confirmed = normalizeCount(confirmed);
   deaths = normalizeCount(deaths);
   active = normalizeCount(active);
   recoveries = normalizeCount(recoveries);
+  population = population;
 
   placenames = placenamesString(placenames);
   this._div.innerHTML = (placenames !== undefined ? "<b>" + placenames + "</b><br>" : "") +
+      "Population: " + population + "</br>" +
       "Confirmed: " + confirmed + "</br>" +
       "Deaths: " + deaths + "<br>" +
       "Recoveries:" + recoveries + "<br>" +
       "Active:" + active + "<br>";
+
 };
 
 function placenamesString(placenames) {
@@ -171,36 +174,39 @@ function placenamesString(placenames) {
   return placenames;
 }
 
-function updateSidebarInfo(confirmed, deaths, recoveries, active, placenames) {
+function updateSidebarInfo(confirmed, deaths, recoveries, active, placenames, population) {
   placenames = placenamesString(placenames);
   document.getElementById("sidebar_confirmed").innerHTML = normalizeCount(confirmed);
   document.getElementById("sidebar_deaths").innerHTML = normalizeCount(deaths);
   document.getElementById("sidebar_recoveries").innerHTML = normalizeCount(recoveries);
   document.getElementById("sidebar_active").innerHTML = normalizeCount(active);
   document.getElementById("sidebar_location").innerHTML = placenames;
+  document.getElementById("sidebar_population").innerHTML = population;
 }
 
 function getMarkerStatistic(marker) {
-  let confirmed, deaths, recoveries, active, names;
+  let confirmed, deaths, recoveries, active, names, population;
   if (marker.getAllChildMarkers) {
     confirmed = marker.getAllChildMarkers().reduce((a, v) => a + v.confirmed, 0);
     deaths = marker.getAllChildMarkers().reduce((a, v) => a + v.deaths, 0);
     recoveries = marker.getAllChildMarkers().reduce((a, v) => a + v.recoveries, 0);
     active = marker.getAllChildMarkers().reduce((a, v) => a + v.active, 0);
     names = marker.getAllChildMarkers().slice().filter((e) => e.name === 'Brazil' || e.confirmed > 0).sort((a, b) => a.confirmed - b.confirmed).reverse().map((v) => v.name);
+    population = marker.getAllChildMarkers().reduce((a, v) => a + v.population, 0);
   } else {
     confirmed = marker.confirmed;
     deaths = marker.deaths;
     recoveries = marker.recoveries;
     active = marker.active;
     names = marker.name;
+    population = marker.population;
   }
-  return [confirmed, deaths, recoveries, active, names];
+  return [confirmed, deaths, recoveries, active, names, population];
 }
 
 function updateSidebarForMarker(marker) {
-  const [confirmed, deaths, recoveries, active, names] = getMarkerStatistic(marker);
-  updateSidebarInfo(confirmed, deaths, recoveries, active, names);
+  const [confirmed, deaths, recoveries, active, names, population] = getMarkerStatistic(marker);
+  updateSidebarInfo(confirmed, deaths, recoveries, active, names, population);
   sidebar_selected_marker = marker;
 }
 
@@ -213,11 +219,11 @@ info.updateForMarker = function (marker) {
     selected_marker._icon.classList.remove('selected');
   }
 
-  const [confirmed, deaths, recoveries, active, names] = getMarkerStatistic(marker);
+  const [confirmed, deaths, recoveries, active, names, population] = getMarkerStatistic(marker);
   if (marker._icon) {
     marker._icon.classList.add('selected');
   }
-  info.update(confirmed, deaths, recoveries, active, names);
+  info.update(confirmed, deaths, recoveries, active, names, population);
 
   selected_marker = marker;
 }
@@ -253,6 +259,7 @@ let animateSpeed = 100;
 let dailyRate = document.getElementById("daily_rate").checked;
 let animation_paused = false;
 let log_scale = document.getElementById("log").checked;
+let pop_scale = document.getElementById("rate").checked;
 let tempAnimateWindow = 7 * 60 * 24;
 let animate_window_max = document.getElementById("animate_max").checked
 if(animate_window_max) {
@@ -264,7 +271,6 @@ if(totalAnimation) {
   document.getElementById('animate_window').disabled = true;
 }
 
-
 const slider_range = $("#slider-range");
 slider_range.slider({
   range: true,
@@ -272,14 +278,33 @@ slider_range.slider({
   max: 100,
   values: [0, animateWindow],
   slide: function (event, ui) {
-    const displayStartMins = ui.values[0];
-    const displayEndMins = ui.values[1];
-
-    setDisplayedDateRange(displayStartMins, displayEndMins);
-
-    animateWindow = displayEndMins - displayStartMins;
-
-    document.getElementById('animate_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+    if (totalAnimation) {
+      const displayStartMins = dateToEpochMins(dataStartDate);
+      const displayEndMins = ui.values[1];
+      setDisplayedDateRange(displayStartMins, displayEndMins);
+      animateWindow = displayEndMins - displayStartMins;
+      document.getElementById('animatTe_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+    }
+    else {
+      var deltaStart = ui.values[0] - displayStartDate;
+      if (deltaStart < 0) deltaStart = - deltaStart;
+      var deltaEnd = ui.values[1] - displayEndDate;
+      if (deltaEnd < 0) deltaEnd = - deltaEnd;
+      if (deltaStart < deltaEnd && ui.values[1] - animateWindow >= dateToEpochMins(dataStartDate)) {
+        const displayStartMins = ui.values[1] - animateWindow;
+        const displayEndMins = ui.values[1];
+        setDisplayedDateRange(displayStartMins, displayEndMins);
+        animateWindow = displayEndMins - displayStartMins;
+        document.getElementById('animatTe_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+      }
+      else if (ui.values[0] + animateWindow <= dateToEpochMins(dataEndDate)) {
+        const displayStartMins = ui.values[0];
+        const displayEndMins = ui.values[0] + animateWindow;
+        setDisplayedDateRange(displayStartMins, displayEndMins);
+        animateWindow = displayEndMins - displayStartMins;
+        document.getElementById('animatTe_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+      }
+    }
   }
 });
 
@@ -394,7 +419,7 @@ class NewsStandDataLayer {
   }
 
   markerIcon(clusterSize) {
-    const size = markerSize(clusterSize);
+    const size = markerSize(clusterSize, false, -1);
     const color = this.color_fn(clusterSize);
 
     const elemStyle =
@@ -446,7 +471,8 @@ class JHUDataLayer {
         const deaths = cluster.getAllChildMarkers().reduce((a, v) => a + v.deaths, 0);
         const recoveries = cluster.getAllChildMarkers().reduce((a, v) => a + v.recoveries, 0);
         const active = that.computeActive(confirmed, deaths, recoveries);
-        return that.layerIcon(confirmed, deaths, recoveries, active);
+        const population = cluster.getAllChildMarkers().reduce((a, v) => a + v.population, 0);
+        return that.layerIcon(confirmed, deaths, recoveries, active, population);
       }
     });
     this.markers.on('click',updateSidebarForEvent);
@@ -457,6 +483,9 @@ class JHUDataLayer {
     this.timeSeriesMarkers = this.timeSeries.map(function (p) {
       const marker = L.marker([p.lat, p.lng]);
       marker.name = p.name;
+      marker.population = parseInt(p.pop);
+      if (isNaN(marker.population)) 
+        marker.population = 0;
       marker.time_series = p.time_series;
       return marker;
     });
@@ -515,8 +544,9 @@ class JHUDataLayer {
         const deaths = entryEnd[2] - entryStart[2];
         const recoveries = entryEnd[3] - entryStart[3];
         const active = this.computeActive(confirmed, deaths, recoveries);
+        const population = m.population;
 
-        const icon = this.layerIcon(confirmed, deaths, recoveries, active);
+        const icon = this.layerIcon(confirmed, deaths, recoveries, active, population);
         m.setIcon(icon)
 
         m.confirmed = confirmed;
@@ -543,8 +573,8 @@ class JHUDataLayer {
     return confirmed - (deaths + recoveries);
   }
 
-  layerIcon(confirmed, deaths, recovered, active) {
-    const confirmedSize = markerSize(confirmed, true);
+  layerIcon(confirmed, deaths, recovered, active, population) {
+    const confirmedSize = markerSize(confirmed, true, population);
     let confirmedStyle =
         'position: relative;' +
         'font-weight: bolder;' +
@@ -557,7 +587,7 @@ class JHUDataLayer {
       confirmedStyle += 'border: dotted black ;';
     }
 
-    const deathsSize = markerSize(deaths);
+    const deathsSize = markerSize(deaths, false, population);
     const deathsStyle =
         'position: absolute;' +
         'border-radius: 50%;' +
@@ -568,7 +598,7 @@ class JHUDataLayer {
         'height: ' + deathsSize + 'px;' +
         'border: dotted red ;';
 
-    const recoveredSize = markerSize(recovered);
+    const recoveredSize = markerSize(recovered, false, population);
     const recoveredStyle =
         'position: absolute;' +
         'border-radius: 50%;' +
@@ -579,7 +609,7 @@ class JHUDataLayer {
         'height: ' + recoveredSize + 'px;' +
         'border: dotted green ;';
 
-    const activeSize = markerSize(active);
+    const activeSize = markerSize(active, false, population);
     const activeStyle =
         'position: absolute;' +
         'border-radius: 50%;' +
@@ -765,15 +795,22 @@ function normalizeCount(clusterSize) {
   }
 }
 
-function markerSize(clusterSize, confirmed=false) {
+function markerSize(clusterSize, confirmed=false, population) {
   clusterSize = clusterSize;//normalizeCount(clusterSize);
-  if(log_scale) {
+  if (pop_scale && population > 0) {
+    if (confirmed)
+      return 10 + clusterSize / (population / 20000);
+    else 
+      return 10 + clusterSize / (population / 80000);
+  }
+  else if(log_scale || population < 0) {
     if (clusterSize <= 0) {
       return 0;
     } else {
       return 40 + Math.log(2 * clusterSize) ** 2;
     }
-  } else {
+  }
+  else {
     let max_daily;
     if(confirmed){
       max_daily = 50000;
@@ -797,6 +834,11 @@ function markerSize(clusterSize, confirmed=false) {
 
 function setLogScale(logScale) {
   log_scale = logScale;
+  setDisplayedDateRange(displayStartDate, displayEndDate);
+}
+
+function setPopScale(popScale) {
+  pop_scale = popScale;
   setDisplayedDateRange(displayStartDate, displayEndDate);
 }
 
@@ -852,13 +894,39 @@ function toggleAnimateMax() {
   }
 }
 
+function formatDate(date) {
+  if (date < dataStartDate) {
+    date = dataStartDate;
+  }
+  var d = new Date(date),
+      month = '' + (d.getMonth() + 1),
+      day = '' + d.getDate(),
+      year = d.getFullYear();
+
+  if (month.length < 2) 
+      month = '0' + month;
+  if (day.length < 2) 
+      day = '0' + day;
+
+  return [year, month, day].join('-');
+}
+
 function setDisplayedDateRange(startMins, endMins) {
+  const minMins = dataStartDate.getTime() / 60 / 1000;
+  const maxMins = dataEndDate / 60 / 1000;
+  const min = Number(((startMins - minMins) * 100) / (maxMins - minMins));
+  const max = Number(((endMins - minMins) * 100) / (maxMins - minMins));
+  const normalMin = min / 100 * 90 + 5;
+  const normalMax = max / 100 * 90 + 5;
+  document.getElementById('start').style.left = normalMin + "%";
+  document.getElementById('end').style.left = normalMax + "%";
   displayEndDate = endMins;
   displayStartDate = startMins;
-
   // Set UI controls to reflect these values
   document.getElementById("display_start_date").valueAsDate = epochMinsToDate(startMins);
   document.getElementById("display_end_date").valueAsDate = epochMinsToDate(endMins);
+  document.getElementById("start").innerHTML = formatDate(epochMinsToDate(startMins));
+  document.getElementById("end").innerHTML = formatDate(epochMinsToDate(endMins));
   slider_range.slider("values", [startMins, endMins]);
 
   // Update all layers for new range

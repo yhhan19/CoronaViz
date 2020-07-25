@@ -10,9 +10,13 @@ def convert_row(row_dict):
   location = row_dict["Province/State"]
   if location == "":
       location = row_dict["Country/Region"]
+      pop = pop_dict[row_dict["Country/Region"].replace(", ", ",")]
+  else:
+      pop = pop_dict[row_dict["Province/State"].replace(", ", ",") + "," + row_dict["Country/Region"].replace(", ", ",")]
 
   lat = row_dict["Lat"]
   lng = row_dict["Long"]
+  
 
   # The us CSV has some entries  with 0,0 coordinates.
   # Ignore these
@@ -35,6 +39,7 @@ def convert_row(row_dict):
       return { 'name': location,
                'lat': lat,
                'lng': lng,
+               'pop' : pop,
                'time_series': time_series_list}
   else:
       return None
@@ -45,6 +50,7 @@ def convert_row_us(row_dict):
 
   lat = row_dict["Lat"]
   lng = row_dict["Long_"]
+  pop = pop_dict[row_dict["Combined_Key"].replace(", ", ",")]
 
   # The us CSV has some entries  with 0,0 coordinates.
   # Ignore these
@@ -75,6 +81,7 @@ def convert_row_us(row_dict):
       return { 'name': location,
                'lat': lat,
                'lng': lng,
+               'pop' : pop,
                'time_series': time_series_list}
   else:
       return None
@@ -101,7 +108,20 @@ def read_time_series(name):
                 row_list.append(converted_row)
     except FileNotFoundError:
         print('US DATA FILE NOT FOUND')
+        print(us_csv_file)
     return row_list
+
+def read_pop():
+    file = "COVID-19/csse_covid_19_data/UID_ISO_FIPS_LookUp_Table.csv"
+    dict = {}
+    with open(file, 'r') as csv_file:
+      reader = csv.DictReader(csv_file)
+      for row in reader:
+          dict[row["Combined_Key"].replace(", ", ",")] = row["Population"]
+    return dict
+
+pop_dict = read_pop()
+pop_dict["District of Columbia,District of Columbia,US"] = pop_dict["District of Columbia,US"]
 
 data_series = ["confirmed", "recovered", "deaths"]
 confirmed = read_time_series("confirmed")
@@ -128,7 +148,8 @@ for i in range(0,len(confirmed)):
         'name': confirmed_entry['name'],
         'lat': confirmed_entry['lat'],
         'lng': confirmed_entry['lng'],
-        'time_series': time_series
+        'time_series': time_series,
+        'pop': confirmed_entry['pop']
     })
 
 
