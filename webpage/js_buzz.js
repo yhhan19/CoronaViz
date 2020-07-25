@@ -150,7 +150,6 @@ info.update = function (confirmed, deaths, recoveries, active, placenames, popul
       "Deaths: " + deaths + "<br>" +
       "Recoveries:" + recoveries + "<br>" +
       "Active:" + active + "<br>";
-
 };
 
 function placenamesString(placenames) {
@@ -269,6 +268,7 @@ if(animate_window_max) {
 let totalAnimation = document.getElementById("total_animation").checked;
 if(totalAnimation) {
   document.getElementById('animate_window').disabled = true;
+  animateWindow = 0;
 }
 
 const slider_range = $("#slider-range");
@@ -279,30 +279,45 @@ slider_range.slider({
   values: [0, animateWindow],
   slide: function (event, ui) {
     if (totalAnimation) {
-      const displayStartMins = dateToEpochMins(dataStartDate);
-      const displayEndMins = ui.values[1];
-      setDisplayedDateRange(displayStartMins, displayEndMins);
-      animateWindow = displayEndMins - displayStartMins;
-      document.getElementById('animatTe_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
-    }
-    else {
-      var deltaStart = ui.values[0] - displayStartDate;
-      if (deltaStart < 0) deltaStart = - deltaStart;
-      var deltaEnd = ui.values[1] - displayEndDate;
-      if (deltaEnd < 0) deltaEnd = - deltaEnd;
-      if (deltaStart < deltaEnd && ui.values[1] - animateWindow >= dateToEpochMins(dataStartDate)) {
-        const displayStartMins = ui.values[1] - animateWindow;
+      if (ui.handleIndex == 1) {
+        const displayStartMins = dateToEpochMins(dataStartDate);
         const displayEndMins = ui.values[1];
         setDisplayedDateRange(displayStartMins, displayEndMins);
-        animateWindow = displayEndMins - displayStartMins;
-        document.getElementById('animatTe_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
       }
-      else if (ui.values[0] + animateWindow <= dateToEpochMins(dataEndDate)) {
-        const displayStartMins = ui.values[0];
-        const displayEndMins = ui.values[0] + animateWindow;
-        setDisplayedDateRange(displayStartMins, displayEndMins);
-        animateWindow = displayEndMins - displayStartMins;
-        document.getElementById('animatTe_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+      else {
+        slider_range.slider("values", [displayStartMins, displayEndMins]);
+      }
+    }
+    else {
+      switch(ui.handleIndex) {
+        case 0:
+          if (ui.values[0] + animateWindow <= dateToEpochMins(dataEndDate)) {
+            const displayStartMins = ui.values[0];
+            const displayEndMins = ui.values[0] + animateWindow;
+            setDisplayedDateRange(displayStartMins, displayEndMins);
+            animateWindow = displayEndMins - displayStartMins;
+            document.getElementById('animatTe_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+          }
+          else {
+            slider_range.slider("values", [dateToEpochMins(dataEndDate) - animateWindow, dateToEpochMins(dataEndDate)]);
+            animateWindow = displayEndMins - displayStartMins;
+            document.getElementById('animate_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+          }
+          break;
+        case 1:
+          if (ui.values[1] - animateWindow >= dateToEpochMins(dataStartDate)) {
+            const displayStartMins = ui.values[1] - animateWindow;
+            const displayEndMins = ui.values[1];
+            setDisplayedDateRange(displayStartMins, displayEndMins);
+            animateWindow = displayEndMins - displayStartMins;
+            document.getElementById('animate_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+          }
+          else {
+            slider_range.slider("values", [dateToEpochMins(dataStartDate), dateToEpochMins(dataStartDate) + animateWindow]);
+            animateWindow = displayEndMins - displayStartMins;
+            document.getElementById('animate_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+          }
+          break;
       }
     }
   }
@@ -895,9 +910,6 @@ function toggleAnimateMax() {
 }
 
 function formatDate(date) {
-  if (date < dataStartDate) {
-    date = dataStartDate;
-  }
   var d = new Date(date),
       month = '' + (d.getMonth() + 1),
       day = '' + d.getDate(),
@@ -913,20 +925,21 @@ function formatDate(date) {
 
 function setDisplayedDateRange(startMins, endMins) {
   const minMins = dataStartDate.getTime() / 60 / 1000;
-  const maxMins = dataEndDate / 60 / 1000;
+  const maxMins = dataEndDate.getTime() / 60 / 1000;
   const min = Number(((startMins - minMins) * 100) / (maxMins - minMins));
   const max = Number(((endMins - minMins) * 100) / (maxMins - minMins));
   const normalMin = min / 100 * 90 + 5;
   const normalMax = max / 100 * 90 + 5;
   document.getElementById('start').style.left = normalMin + "%";
   document.getElementById('end').style.left = normalMax + "%";
+
   displayEndDate = endMins;
   displayStartDate = startMins;
   // Set UI controls to reflect these values
   document.getElementById("display_start_date").valueAsDate = epochMinsToDate(startMins);
   document.getElementById("display_end_date").valueAsDate = epochMinsToDate(endMins);
-  document.getElementById("start").innerHTML = formatDate(epochMinsToDate(startMins));
-  document.getElementById("end").innerHTML = formatDate(epochMinsToDate(endMins));
+  document.getElementById("start").innerHTML = formatDate(epochMinsToDate(startMins + 12 * 60));
+  document.getElementById("end").innerHTML = formatDate(epochMinsToDate(endMins + 12 * 60));
   slider_range.slider("values", [startMins, endMins]);
 
   // Update all layers for new range
@@ -982,9 +995,11 @@ function stepBack() {
   let current_start = displayStartDate;
   current_start -= animateStep;
   if(!totalAnimation) {
-    setDisplayedDateRange(current_start, current_end);
+    if (current_start >= dateToEpochMins(dataStartDate) && current_end <= dateToEpochMins(dataEndDate))
+      setDisplayedDateRange(current_start, current_end);
   } else {
-    setDisplayedDateRange(displayStartDate, current_end);
+    if (current_end >= dateToEpochMins(dataStartDate)) 
+      setDisplayedDateRange(displayStartDate, current_end);
   }
 }
 
@@ -1017,7 +1032,7 @@ function setAnimationRange(start, end) {
   slider_range.slider("option", "min", min);
   slider_range.slider("option", "max", max);
 
-  setDisplayedDateRange(min, min + animateWindow);
+  setDisplayedDateRange(min, min + animatewindow);
 }
 
 function toggleFloatingBox() {
@@ -1025,11 +1040,19 @@ function toggleFloatingBox() {
 }
 
 function setTotalAnimation(total) {
-  totalAnimation = total;
-  document.getElementById('animate_window').disabled = totalAnimation;
-  if(!totalAnimation) {
-    setDisplayedDateRange(displayEndDate - animateWindow, displayEndDate);
-  } else {
+  if (total == true) {
+    totalAnimation = true;
+    document.getElementById('animate_window').disabled = true;
+    animateWindow = 0;
     setDisplayedDateRange(dateToEpochMins(dataStartDate), displayEndDate);
+  }
+  else {
+    totalAnimation = false;
+    document.getElementById('animate_window').disabled = false;
+    animateWindow = 24*60 * parseInt(document.getElementById('animate_window').value);
+    if (displayEndDate - animateWindow >= dateToEpochMins(dataStartDate)) 
+      setDisplayedDateRange(displayEndDate - animateWindow, displayEndDate);
+    else 
+      setDisplayedDateRange(dateToEpochMins(dataStartDate), dateToEpochMins(dataStartDate) + animateWindow);
   }
 }
