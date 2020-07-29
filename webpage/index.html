@@ -220,10 +220,10 @@
         <div id="map">
           <div id="info"></div>
         </div>
-        <p>
-          <label for="idate">Input Display Date:</label>
-          <input type="date" id="display_start_date" readonly style="border:0">
-          <input type="date" id="display_end_date" readonly style="border:0">
+        <p hidden>
+          <label for="idate" hidden>Input Display Date:</label>
+          <input hidden type="date" id="display_start_date" readonly style="border:0">
+          <input hidden type="date" id="display_end_date" readonly style="border:0">
         </p>
          <div>
           <output class="bubble" id = "start"></output><br>
@@ -280,11 +280,11 @@
 
           <br>
         <label for="log">Log:</label>
-        <input type="radio" name="scale" id="log" checked onclick="setLogScale(true);setPopScale(false)">
+        <input type="radio" name="scale" id="log" checked onclick="setScale(0);">
         <label for="line">Linear:</label>
-        <input type="radio" name="scale" id="line" onclick="setLogScale(false);setPopScale(false)">
+        <input type="radio" name="scale" id="line" onclick="setScale(1);">
         <label for="line">Rate:</label>
-        <input type="radio" name="scale" id="rate" onclick="setLogScale(false);setPopScale(true)">
+        <input type="radio" name="scale" id="rate" onclick="setScale(2);">
           <br>
 
         <label for="cumulative_animation">Cumulative:</label>
@@ -332,79 +332,147 @@
           <h2> Animation Focus Data </h2>
           Location: <span id="sidebar_location">N/A</span><br>
           Population: <span id="sidebar_population">N/A</span><br>
-          Confirmed (rate): <span id="sidebar_confirmed">N/A</span><br>
-          Deaths (rate): <span id="sidebar_deaths">N/A</span><br>
-          Recoveries (rate): <span id="sidebar_recoveries">N/A</span><br>
-          Active (rate): <span id="sidebar_active">N/A</span><br>
+          Confirmed: <span id="sidebar_confirmed">N/A</span><br>
+          Deaths: <span id="sidebar_deaths">N/A</span><br>
+          Recoveries: <span id="sidebar_recoveries">N/A</span><br>
+          Active: <span id="sidebar_active">N/A</span><br>
+          Incidence Rate: <span id="sidebar_incidence">N/A</span><br>
+          Mortality Rate: <span id="sidebar_mortality">N/A</span><br>
           (Incidence rate = cases per 100,000 persons)
           <hr>
         </div>
 
         <div>
           <h2> Animation Layers </h2>
+          <div>
           <label for="news_data_checkbox">
             <div class="circle_news_small">1</div>
-            <div class="circle_news_med">10</div>
-            <div class="circle_news_large">100</div>
+            <div hidden class="circle_news_med">10</div>
+            <div hidden class="circle_news_large">100</div>
             News Keywords:
           </label>
           <input type="checkbox" id="news_data_checkbox" checked onclick="newsLayer.togglePlotting();">
-          <br>
+        </div>
 
+          <div>
           <label for="twitter_data_checkbox">
             <div class="circle_twitter_small">1</div>
-            <div class="circle_twitter_med">10</div>
-            <div class="circle_twitter_large">100</div>
+            <div hidden class="circle_twitter_med">10</div>
+            <div hidden class="circle_twitter_large">100</div>
             Tweet Keywords:
           </label>
           <input type="checkbox" id="twitter_data_checkbox" onclick="twitterLayer.togglePlotting();">
-          <br>
+        </div>
 
+        <table align="left">
+          <tr>
+             <td><div>
+              <label for="confirmed_cases_checkbox">
+                <div class="circle_confirmed_small"> </div>
+                <div hidden class="circle_confirmed_med">10</div>
+                <div hidden class="circle_confirmed_large">100</div>
+                Confirmed:
+                <input type="checkbox" id="confirmed_checkbox" checked onclick="jhuLayer.togglePlotting('confirmed');">
+              </label>
+              </div></td>
+             <td><div>
+              &nbsp;Icon Size: 
+              <input type="range" min="1" max="100" value="50" class="slider_size" id="confirmed_size">
+              </div></td>
+          </tr>
 
-          <label for="confirmed_cases_checkbox">
-            <div class="circle_confirmed_small">1</div>
-            <div class="circle_confirmed_med">10</div>
-            <div class="circle_confirmed_large">100</div>
-            Confirmed Cases:
-          </label>
-          <input type="checkbox" id="confirmed_cases_checkbox" checked onclick="jhuLayer.togglePlotting('confirmed');">
-          <br>
+          <tr>
+            <td><div>
+              <label for="deaths_checkbox">
+                <div class="circle_deaths_small"> </div>
+                <div hidden class="circle_deaths_med">10</div>
+                <div hidden class="circle_deaths_large">100</div>
+                Deaths:
+              </label>
+              <input type="checkbox" id="deaths_checkbox" checked onclick="jhuLayer.togglePlotting('deaths');">
+             </div></td>
+            <td><div>
+              &nbsp;Icon Size: 
+          <input type="range" min="1" max="100" value="50" class="slider_size" id="deaths_size">
+        </div></td>
+      </tr>
 
-          <label for="deaths_checkbox">
-            <div class="circle_deaths_small">1</div>
-            <div class="circle_deaths_med">10</div>
-            <div class="circle_deaths_large">100</div>
-            Deaths:
-          </label>
-          <input type="checkbox" id="deaths_checkbox" checked onclick="jhuLayer.togglePlotting('deaths');">
-          <br>
-
+        <tr>
+        <td><div>
           <label for="recovered_checkbox">
-            <div class="circle_recovered_small">1</div>
-            <div class="circle_recovered_med">10</div>
-            <div class="circle_recovered_large">100</div>
+            <div class="circle_recovered_small"> </div>
+            <div hidden class="circle_recovered_med">10</div>
+            <div hidden class="circle_recovered_large">100</div>
             Recoveries:
           </label>
-          <input type="checkbox" id="recovered_checkbox" onclick="jhuLayer.togglePlotting('recoveries');">
-          <br>
+          <input type="checkbox" id="recoveries_checkbox" onclick="jhuLayer.togglePlotting('recoveries');">
+         </div></td>
+        <td><div>
+          &nbsp;Icon Size: 
+          <input type="range" min="1" max="100" value="50" class="slider_size" id="recoveries_size">
+        </div></td>
+      </tr>
 
-          <label for="active_checkbox">
-            <div class="circle_active_small">1</div>
-            <div class="circle_active_med">10</div>
-            <div class="circle_active_large">100</div>
-            Active Cases:
+    <tr>
+    <td><div>
+      <label for="active_checkbox">
+        <div class="circle_active_small"> </div>
+        <div hidden class="circle_active_med">10</div>
+        <div hidden class="circle_active_large">100</div>
+        Active Cases:
+      </label>
+      <input type="checkbox" id="active_checkbox" onclick="jhuLayer.togglePlotting('active');">
+     </div></td>
+    <td><div>
+      &nbsp;Icon Size: 
+      <input type="range" min="1" max="100" value="50" class="slider_size" id="active_size">
+    </div></td>
+    </tr>
+
+    <tr>
+    <td><div>
+      <label for="incidence_checkbox">
+        <div class="circle_incidence_small"> </div>
+        <div hidden class="circle_incidence_med">10</div>
+        <div hidden class="circle_incidence_large">100</div>
+        Incidence Rate:
+      </label>
+      <input type="checkbox" id="incidence_checkbox" onclick="jhuLayer.togglePlotting('incidence');">
+     </div></td>
+    <td><div>
+      &nbsp;Icon Size: 
+          <input type="range" min="1" max="100" value="50" class="slider_size" id="incidence_size">
+          </div></td>
+         </tr>
+
+         <tr>
+         <td><div>
+          <label for="mortality_checkbox">
+            <div class="circle_mortality_small"> </div>
+            <div hidden class="circle_mortality_med">10</div>
+            <div hidden class="circle_mortality_large">100</div>
+            Mortality Rate:
           </label>
-          <input type="checkbox" id="active_checkbox" onclick="jhuLayer.togglePlotting('active');">
-          <hr>
-
+          <input type="checkbox" id="mortality_checkbox" onclick="jhuLayer.togglePlotting('mortality');">
+         </div></td>
+        <td><div>
+          &nbsp;Icon Size: 
+          <input type="range" min="1" max="100" value="50" class="slider_size" id="mortality_size">
+          </div></td>
+             </tr>
+       </table>
+       <div style="clear:both;height:1px;"> </div> 
+       <div>
+       <span class="btn btn-secondary" id="reset_scale" onclick="resetScale();">Reset All Icon Size</span>
+       </div>
         </div>
       </div>
     </div>
   </div>
 </main>
 
-<script src="jhu_data.js?v=5"></script>
+<script src="jhu_data.js?v=51"></script>
 <script src="bounding-boxes.js?v=4"></script>
-<script src="js_buzz.js?v=4"></script>
+<script src="js_buzz.js?v=45"></script>
 </body>
 </html>

@@ -93,7 +93,15 @@ function resetClickTimeout() {
 }
 
 function percent(confirmed, population) {
-  return Math.trunc(confirmed * 100000 / population);
+  if (population == 0) return 0;
+  const rate = confirmed * 100000 / population;
+  return rate.toFixed(2);
+}
+
+function percent2(deaths, confirmed) {
+  if (confirmed == 0) return "0.00%";
+  const rate = deaths * 100 / confirmed;
+  return rate.toFixed(2) + "%";
 }
 
 function getClosestMarker(latlng) {
@@ -147,11 +155,13 @@ info.update = function (confirmed, deaths, recoveries, active, placenames, popul
 
   placenames = placenamesString(placenames);
   this._div.innerHTML = (placenames !== undefined ? "<b>" + placenames + "</b><br>" : "") +
-      "Population: " + population + "</br>" +
-      "Confirmed: " + confirmed + " (" + percent(confirmed, population) + ")</br>" +
-      "Deaths: " + deaths + " (" + percent(deaths, population) + ")<br>" +
-      "Recoveries:" + recoveries + " (" + percent(recoveries, population) + ")<br>" +
-      "Active:" + active + " (" + percent(active, population) + ")<br>";
+      "Population: " + population + "<br>" +
+      "Confirmed: " + confirmed + "<br>" +
+      "Deaths: " + deaths + "<br>" +
+      "Recoveries:" + recoveries + "<br>" +
+      "Active:" + active + "<br>" +
+      "Incidence Rate: " + percent(confirmed, population) + "<br>" +
+      "Mortality Rate: " + percent2(deaths, confirmed) + "<br>";
 };
 
 function placenamesString(placenames) {
@@ -176,14 +186,14 @@ function placenamesString(placenames) {
 }
 
 function updateSidebarInfo(confirmed, deaths, recoveries, active, placenames, population) {
-  placenames = placenamesString(placenames);
-  const comfirmInfo = normalizeCount(confirmed) + " (" + percent(normalizeCount(confirmed), population) + ")";
-  document.getElementById("sidebar_confirmed").innerHTML = comfirmInfo;
-  document.getElementById("sidebar_deaths").innerHTML = normalizeCount(deaths)+ " (" + percent(normalizeCount(deaths), population) + ")";
-  document.getElementById("sidebar_recoveries").innerHTML = normalizeCount(recoveries)+ " (" + percent(normalizeCount(recoveries), population) + ")";
-  document.getElementById("sidebar_active").innerHTML = normalizeCount(active)+ " (" + percent(normalizeCount(active), population) + ")";
-  document.getElementById("sidebar_location").innerHTML = placenames;
+  document.getElementById("sidebar_confirmed").innerHTML = normalizeCount(confirmed);
+  document.getElementById("sidebar_deaths").innerHTML = normalizeCount(deaths);
+  document.getElementById("sidebar_recoveries").innerHTML = normalizeCount(recoveries);
+  document.getElementById("sidebar_active").innerHTML = normalizeCount(active);
+  document.getElementById("sidebar_location").innerHTML = placenamesString(placenames);
   document.getElementById("sidebar_population").innerHTML = population;
+  document.getElementById("sidebar_incidence").innerHTML = percent(normalizeCount(confirmed), population);
+  document.getElementById("sidebar_mortality").innerHTML = percent2(normalizeCount(deaths), confirmed)
 }
 
 function getMarkerStatistic(marker) {
@@ -250,8 +260,8 @@ for (let e of sorted_options) {
   country_select.appendChild(option);
 }
 
-let dataStartDate;
 let dataEndDate;
+let dataStartDate;
 let displayStartDate;
 let displayEndDate;
 
@@ -326,6 +336,69 @@ slider_range.slider({
   }
 });
 
+function calcScale(value) {
+  const maxScale = 10.0;
+  const minScale = 0.5;
+  if (value <= 50) {
+    return value * (1 - minScale) / 50 + minScale;
+  }
+  else {
+    return value * (maxScale - 1) / 50 + 2 - maxScale;
+  }
+}
+
+const mortality_slider = document.getElementById('mortality_size');
+mortality_slider.oninput = function() {
+  mortality_scale = calcScale(this.value);
+  setDisplayedDateRange(displayStartDate, displayEndDate);
+}
+let mortality_scale = 1;
+
+const incidence_slider = document.getElementById('incidence_size');
+incidence_slider.oninput = function() {
+  incidence_scale = calcScale(this.value);
+  setDisplayedDateRange(displayStartDate, displayEndDate);
+}
+let incidence_scale = 1;
+
+const confirmed_slider = document.getElementById('confirmed_size');
+confirmed_slider.oninput = function() {
+  confirmed_scale = calcScale(this.value);
+  setDisplayedDateRange(displayStartDate, displayEndDate);
+}
+let confirmed_scale = 1;
+
+const deaths_slider = document.getElementById('deaths_size');
+deaths_slider.oninput = function() {
+  deaths_scale = calcScale(this.value);
+  setDisplayedDateRange(displayStartDate, displayEndDate);
+}
+let deaths_scale = 1;
+
+const recoveries_slider = document.getElementById('recoveries_size');
+recoveries_slider.oninput = function() {
+  recoveries_scale = calcScale(this.value);
+  setDisplayedDateRange(displayStartDate, displayEndDate);
+}
+let recoveries_scale = 1;
+
+const active_slider = document.getElementById('active_size');
+active_slider.oninput = function() {
+  active_scale = calcScale(this.value);
+  setDisplayedDateRange(displayStartDate, displayEndDate);
+}
+let active_scale = 1;
+
+function resetScale() {
+  document.getElementById("mortality_size").value = 
+  document.getElementById("incidence_size").value =
+  document.getElementById("confirmed_size").value =
+  document.getElementById("deaths_size").value = 
+  document.getElementById("recoveries_size").value = 
+  document.getElementById("active_size").value = "50";
+  mortality_scale = incidence_scale = deaths_scale = confirmed_scale = recoveries_scale = active_scale = 1;
+  setDisplayedDateRange(displayStartDate, displayEndDate);
+}
 
 selected_marker = undefined;
 sidebar_selected_marker = undefined;
@@ -437,7 +510,7 @@ class NewsStandDataLayer {
   }
 
   markerIcon(clusterSize) {
-    const size = markerSize(clusterSize, false, -1);
+    const size = markerSize(clusterSize, -1);
     const color = this.color_fn(clusterSize);
 
     const elemStyle =
@@ -476,7 +549,7 @@ class NewsStandDataLayer {
 }
 
 class JHUDataLayer {
-  constructor(plottingConfirmed, plottingDeaths, plottingRecoveries, plottingActive) {
+  constructor(plottingConfirmed, plottingDeaths, plottingRecoveries, plottingActive, plottingIncidence, plottingMortality) {
     this.timeSeries = jhuData;
 
     const that = this;
@@ -515,7 +588,9 @@ class JHUDataLayer {
       confirmed: {plotting: plottingConfirmed},
       deaths: {plotting: plottingDeaths},
       recoveries: {plotting: plottingRecoveries},
-      active: {plotting: plottingActive}
+      active: {plotting: plottingActive},
+      incidence: {plotting: plottingIncidence},
+      mortality: {plotting: plottingMortality}
     };
     if (this.plottingAny()) {
       map.addLayer(this.markers);
@@ -592,73 +667,100 @@ class JHUDataLayer {
   }
 
   layerIcon(confirmed, deaths, recovered, active, population) {
-    const confirmedSize = markerSize(confirmed, true, population);
-    let confirmedStyle =
-        'position: relative;' +
-        'font-weight: bolder;' +
-        'border-radius: 50%;' +
-        'line-height: ' + confirmedSize + 'px;' +
-        'width: ' + confirmedSize + 'px;' +
-        'height: ' + confirmedSize + 'px;';
 
-    if (this.subLayers.confirmed.plotting) {
-      confirmedStyle += 'border: dotted black ;';
+      const confirmedSize = markerSize(confirmed, 0);
+      let confirmedStyle =
+          'position: relative;' +
+          'font-weight: bolder;' +
+          'border-radius: 50%;' +
+          'line-height: ' + confirmedSize + 'px;' +
+          'width: ' + confirmedSize + 'px;' +
+          'height: ' + confirmedSize + 'px;';
+
+      if (this.subLayers.confirmed.plotting) {
+        confirmedStyle += 'border: dotted black ;';
+      }
+
+      const deathsSize = markerSize(deaths, 1);
+      const deathsStyle =
+          'position: absolute;' +
+          'border-radius: 50%;' +
+          'top: 50%;' +
+          'left: 50%;' +
+          'margin: ' + (-deathsSize / 2) + 'px 0px 0px ' + (-deathsSize / 2) + 'px;' +
+          'width: ' + deathsSize + 'px;' +
+          'height: ' + deathsSize + 'px;' +
+          'border: dotted red ;';
+      
+      const recoveredSize = markerSize(recovered, 2);
+      const recoveredStyle =
+          'position: absolute;' +
+          'border-radius: 50%;' +
+          'top: 50%;' +
+          'left: 50%;' +
+          'margin: ' + (-recoveredSize / 2) + 'px 0px 0px ' + (-recoveredSize / 2) + 'px;' +
+          'width: ' + recoveredSize + 'px;' +
+          'height: ' + recoveredSize + 'px;' +
+          'border: dotted green ;';
+
+      const activeSize = markerSize(active, 3);
+      const activeStyle =
+          'position: absolute;' +
+          'border-radius: 50%;' +
+          'top: 50%;' +
+          'left: 50%;' +
+          'margin: ' + (-activeSize / 2) + 'px 0px 0px ' + (-activeSize / 2) + 'px;' +
+          'width: ' + activeSize + 'px;' +
+          'height: ' + activeSize + 'px;' +
+          'border: dotted orange ;';
+        
+      const incidenceSize = markerSize2(confirmed, population, 0);
+      const incidenceStyle =
+        'position: absolute;' +
+        'border-radius: 50%;' +
+        'top: 50%;' +
+        'left: 50%;' +
+        'margin: ' + (-incidenceSize / 2) + 'px 0px 0px ' + (-incidenceSize / 2) + 'px;' +
+        'width: ' + incidenceSize + 'px;' +
+        'height: ' + incidenceSize + 'px;' +
+        'border: solid black ;';
+      
+      const mortalitySize = markerSize2(deaths, confirmed, 1);
+      const mortalityStyle =
+          'position: absolute;' +
+          'border-radius: 50%;' +
+          'top: 50%;' +
+          'left: 50%;' +
+          'margin: ' + (-mortalitySize / 2) + 'px 0px 0px ' + (-mortalitySize / 2) + 'px;' +
+          'width: ' + mortalitySize + 'px;' +
+          'height: ' + mortalitySize + 'px;' +
+          'border: solid red ;';
+      
+      if ((confirmed + deaths + recovered) === 0) {
+        confirmedStyle += 'display: none;';
+      }
+
+      return new L.DivIcon({
+        html: '<div class="circle" style="' + confirmedStyle + '">' +
+            (this.subLayers.incidence.plotting && deaths > 0 ? '<div class="circle" style="' + incidenceStyle + '"></div>' : '') +
+            (this.subLayers.mortality.plotting && deaths > 0 ? '<div class="circle" style="' + mortalityStyle + '"></div>' : '') +
+            (this.subLayers.deaths.plotting && deaths > 0 ? '<div class="circle" style="' + deathsStyle + '"></div>' : '') +
+            (this.subLayers.recoveries.plotting && recovered > 0 ? '<div class="circle" style="' + recoveredStyle + '"></div>' : '') +
+            (this.subLayers.active.plotting && active > 0 ? '<div class="circle" style="' + activeStyle + '"></div>' : '') +
+            '</div>',
+        className: 'marker-cluster',
+        iconSize: new L.Point(confirmedSize, confirmedSize)
+      });
     }
-
-    const deathsSize = markerSize(deaths, false, population);
-    const deathsStyle =
-        'position: absolute;' +
-        'border-radius: 50%;' +
-        'top: 50%;' +
-        'left: 50%;' +
-        'margin: ' + (-deathsSize / 2) + 'px 0px 0px ' + (-deathsSize / 2) + 'px;' +
-        'width: ' + deathsSize + 'px;' +
-        'height: ' + deathsSize + 'px;' +
-        'border: dotted red ;';
-
-    const recoveredSize = markerSize(recovered, false, population);
-    const recoveredStyle =
-        'position: absolute;' +
-        'border-radius: 50%;' +
-        'top: 50%;' +
-        'left: 50%;' +
-        'margin: ' + (-recoveredSize / 2) + 'px 0px 0px ' + (-recoveredSize / 2) + 'px;' +
-        'width: ' + recoveredSize + 'px;' +
-        'height: ' + recoveredSize + 'px;' +
-        'border: dotted green ;';
-
-    const activeSize = markerSize(active, false, population);
-    const activeStyle =
-        'position: absolute;' +
-        'border-radius: 50%;' +
-        'top: 50%;' +
-        'left: 50%;' +
-        'margin: ' + (-activeSize / 2) + 'px 0px 0px ' + (-activeSize / 2) + 'px;' +
-        'width: ' + activeSize + 'px;' +
-        'height: ' + activeSize + 'px;' +
-        'border: dotted orange ;';
-
-    if ((confirmed + deaths + recovered) === 0) {
-      confirmedStyle += 'display: none;';
-    }
-
-    return new L.DivIcon({
-      html: '<div class="circle" style="' + confirmedStyle + '">' +
-          (this.subLayers.deaths.plotting && deaths > 0 ? '<div class="circle" style="' + deathsStyle + '"></div>' : '') +
-          (this.subLayers.recoveries.plotting && recovered > 0 ? '<div class="circle" style="' + recoveredStyle + '"></div>' : '') +
-          (this.subLayers.active.plotting && active > 0 ? '<div class="circle" style="' + activeStyle + '"></div>' : '') +
-          '</div>',
-      className: 'marker-cluster',
-      iconSize: new L.Point(confirmedSize, confirmedSize)
-    });
-  }
 }
 
-const confirmedCasesSelected = document.getElementById("confirmed_cases_checkbox").checked;
+const confirmedCasesSelected = document.getElementById("confirmed_checkbox").checked;
 const deathsSelected = document.getElementById("deaths_checkbox").checked;
-const recoveredSelected = document.getElementById("recovered_checkbox").checked;
+const recoveredSelected = document.getElementById("recoveries_checkbox").checked;
 const activeSelected = document.getElementById("active_checkbox").checked;
-const jhuLayer = new JHUDataLayer(confirmedCasesSelected, deathsSelected, recoveredSelected, activeSelected);
+const incidenceSelected = document.getElementById("incidence_checkbox").checked;
+const mortalitySelected = document.getElementById("mortality_checkbox").checked;
+const jhuLayer = new JHUDataLayer(confirmedCasesSelected, deathsSelected, recoveredSelected, activeSelected, incidenceSelected, mortalitySelected);
 
 const newsDataSelected = document.getElementById("news_data_checkbox").checked;
 const newsLayer = new NewsStandDataLayer(newsDataSelected,
@@ -813,31 +915,25 @@ function normalizeCount(clusterSize) {
   }
 }
 
-function markerSize(clusterSize, confirmed=false, population) {
+function markerSize(clusterSize, type) {
   clusterSize = clusterSize;//normalizeCount(clusterSize);
-  if (pop_scale && population > 0) {
-    let windowSize = 0;
-    if (totalAnimation) {
-        windowSize = dateToEpochMins(dataEndDate) - dateToEpochMins(dataStartDate);
-    } else {
-        windowSize = animateWindow;
-    }
-    const scale = Math.log10((dateToEpochMins(dataEndDate) - dateToEpochMins(dataStartDate)) / windowSize) + 1;
-    if (confirmed)
-      return 10 + clusterSize / (population / 10000) * scale;
-    else 
-      return 10 + clusterSize / (population / 50000) * scale;
-  }
-  else if(log_scale || population < 0) {
+  if(log_scale || type == -1) {
     if (clusterSize <= 0) {
       return 0;
     } else {
-      return 40 + Math.log(2 * clusterSize) ** 2;
+      const size = 40 + Math.log(2 * clusterSize) ** 2;
+      switch (type) {
+        case -1: return size;
+        case 0: return size * confirmed_scale;
+        case 1: return size * deaths_scale;
+        case 2: return size * recoveries_scale;
+        case 3: return size * active_scale;
+      }
     }
   }
   else {
     let max_daily;
-    if(confirmed){
+    if(type == 0){
       max_daily = 50000;
     } else {
       max_daily = 10000;
@@ -853,18 +949,75 @@ function markerSize(clusterSize, confirmed=false, population) {
     const max_range = max_daily * (windowSize / (60 * 24));
 
     const max_size = 1000;
-    return 10 + max_size * (clusterSize / max_range);
+    const size = 10 + max_size * (clusterSize / max_range);
+    switch (type) {
+      case 0: return size * confirmed_scale;
+      case 1: return size * deaths_scale;
+      case 2: return size * recoveries_scale;
+      case 3: return size * active_scale;
+    }
   }
 }
 
-function setLogScale(logScale) {
-  log_scale = logScale;
+function markerSize2(clusterSize, totalSize, type) {
+  if (clusterSize<= 0 || totalSize <= 0) return 0;
+  else {
+    if (type == 0) {
+      let windowSize = 0;
+      if (totalAnimation) {
+          windowSize = dateToEpochMins(dataEndDate) - dateToEpochMins(dataStartDate);
+      } else {
+          windowSize = animateWindow;
+      }
+      if (dataEndDate == undefined) return 0;
+      const ratio = (dateToEpochMins(dataEndDate) - dateToEpochMins(dataStartDate)) / windowSize;
+      const scale = Math.log(ratio) + 1;
+      return (10 + clusterSize / (totalSize / 10000) * scale) * incidence_scale;
+    }
+    else if (type == 1) {
+      var percent = clusterSize / totalSize;
+      if (percent > 0.5) percent = 0.5;
+      const maxSize = 250;
+      return (10 + maxSize * percent) * mortality_scale;
+    }
+  }
+}
+
+function setScale(type) {
+  if (type == 2) {
+    pop_scale = true;
+    uncheckPlotting('confirmed');
+    uncheckPlotting('deaths');
+    uncheckPlotting('recoveries');
+    uncheckPlotting('active');
+    checkPlotting('incidence');
+    checkPlotting('mortality');
+  }
+  else {
+    pop_scale = false;
+    log_scale = (type == 0);
+    checkPlotting('confirmed');
+    checkPlotting('deaths');
+    uncheckPlotting('recoveries');
+    uncheckPlotting('active');
+    uncheckPlotting('incidence');
+    uncheckPlotting('mortality');
+  }
   setDisplayedDateRange(displayStartDate, displayEndDate);
 }
 
-function setPopScale(popScale) {
-  pop_scale = popScale;
-  setDisplayedDateRange(displayStartDate, displayEndDate);
+function checkPlotting(subLayer) {
+  if (document.getElementById(subLayer + '_checkbox').checked == false) {
+    document.getElementById(subLayer + '_checkbox').checked = true;
+    jhuLayer.togglePlotting(subLayer);
+  }
+}
+
+function uncheckPlotting(subLayer) {
+  if (document.getElementById(subLayer + '_checkbox').checked == true) {
+    document.getElementById(subLayer + '_checkbox').checked = false;
+    jhuLayer.togglePlotting(subLayer);
+  }
 }
 
 function dateToEpochMins(date) {

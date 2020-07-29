@@ -147,26 +147,28 @@ span.line {
 .circle_recovered_small, .circle_recovered_med, .circle_recovered_large,
 .circle_deaths_small, .circle_deaths_med, .circle_deaths_large,
 .circle_confirmed_small, .circle_confirmed_med, .circle_confirmed_large,
-.circle_news_small, .circle_news_med, .circle_news_large {
+.circle_news_small, .circle_news_med, .circle_news_large,
+.circle_incidence_small, .circle_incidence_med, .circle_incidence_large,
+.circle_mortality_small, .circle_mortality_med, .circle_mortality_large {
   border-radius: 50%;
   display: inline-block;
   text-align: center;
   font-weight: bold;
 }
 
-.circle_active_small, .circle_twitter_small, .circle_recovered_small, .circle_deaths_small, .circle_confirmed_small, .circle_news_small {
+.circle_active_small, .circle_twitter_small, .circle_recovered_small, .circle_deaths_small, .circle_confirmed_small, .circle_news_small, .circle_incidence_small, .circle_mortality_small {
   width: 25px;
   height: 25px;
   line-height: 25px;
 }
 
-.circle_active_med, .circle_twitter_med, .circle_recovered_med, .circle_deaths_med, .circle_confirmed_med, .circle_news_med {
+.circle_active_med, .circle_twitter_med, .circle_recovered_med, .circle_deaths_med, .circle_confirmed_med, .circle_news_med, .circle_incidence_med, .circle_mortality_med {
   width: 41px;
   height: 41px;
   line-height: 41px;
 }
 
-.circle_active_large, .circle_twitter_large, .circle_recovered_large, .circle_deaths_large, .circle_confirmed_large, .circle_news_large {
+.circle_active_large, .circle_twitter_large, .circle_recovered_large, .circle_deaths_large, .circle_confirmed_large, .circle_news_large, .circle_incidence_large, .circle_mortality_large {
   width: 59px;
   height: 59px;
   line-height: 59px;
@@ -186,6 +188,14 @@ span.line {
 
 .circle_active_small, .circle_active_med, .circle_active_large {
   border: dotted orange;
+}
+
+.circle_incidence_small, .circle_incidence_med, .circle_incidence_large {
+  border: solid black;
+}
+
+.circle_mortality_small, .circle_mortality_med, .circle_mortality_large {
+  border: solid red;
 }
 
 .circle_twitter_small, .circle_twitter_med, .circle_twitter_large {
