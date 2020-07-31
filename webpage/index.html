@@ -242,10 +242,10 @@
           <select id="country_select" onchange="setCountryView(this.value)"></select>
           <br>
           <label for="state_select">State (Province):</label>
-          <select id="state_select" onchange="setStateView(this.value)"></select>
+          <select disabled id="state_select" onchange="setStateView(this.value)"></select>
           <br>
           <label for="county_select">County (City):</label>
-          <select id="county_select" onchange="setCountyView(this.value)"></select>
+          <select disabled id="county_select" onchange="setCountyView(this.value)"></select>
           <br>
           <span hidden class="btn btn-secondary" onclick="setMarylandView();">View Maryland</span>
           <span hidden class="btn btn-secondary" onclick="setVirginiaView();">View Virginia</span>
@@ -310,10 +310,10 @@
           Confirmed: <span id="sidebar_confirmed">N/A</span><br>
           Deaths: <span id="sidebar_deaths">N/A</span><br>
           Recoveries: <span id="sidebar_recoveries">N/A</span><br>
-          Active: <span id="sidebar_active">N/A</span> (confirmed - deaths - recoveries)<br>
-          Incidence Rate: <span id="sidebar_incidence">N/A</span> (confirmed per 100,000 persons)<br>
-          Mortality Rate: <span id="sidebar_mortality">N/A</span> (deaths over confirmed)<br>
-          Recovery Rate: <span id="sidebar_recoveryrate">N/A</span> (recoveries over deaths + recoveries)<br>
+          Active: <span id="sidebar_active">N/A</span> [confirmed - (deaths + recoveries)]<br>
+          Incidence Rate: <span id="sidebar_incidence">N/A</span> [confirmed per 100,000 persons]<br>
+          Mortality Rate: <span id="sidebar_mortality">N/A</span> [deaths over confirmed]<br>
+          Recovery Rate: <span id="sidebar_recoveryrate">N/A</span> [recoveries over (deaths + recoveries)]<br>
           <label for="cumulative_animation">Cumulative:</label>
           <input type="radio" name="animation_type" id="cumulative_animation" checked onclick="setAnimationType(false);">
           <label for="daily_rate">Daily Rate:</label>
@@ -494,8 +494,8 @@
   </div>
 </main>
 
-<script src="jhu_data.js?v=52"></script>
+<script src="jhu_data.js?v=54"></script>
 <script src="bounding-boxes.js?v=41"></script>
-<script src="js_buzz.js?v=47"></script>
+<script src="js_buzz.js?v=48"></script>
 </body>
 </html>

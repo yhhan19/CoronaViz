@@ -1262,9 +1262,10 @@ function setCountryView(country_code) {
     county_select.removeChild(county_select.lastElementChild);
   }
   const option = document.createElement("option");
-  const textnode = document.createTextNode("-");
+  const textnode = document.createTextNode("        ");
   option.appendChild(textnode);
   county_select.appendChild(option);
+  county_select.disabled = true;
   const bb = bounding_boxes[country_code][1];
   map.fitBounds([[bb[1], bb[0]], [bb[3], bb[2]]]);
   const name = sorted_options.find(e => e[0] == country_code)[1][0];
@@ -1289,9 +1290,10 @@ function createStateOptions(country) {
   }
   if (state_list.length == 0) {
     const option = document.createElement("option");
-    const textnode = document.createTextNode("-");
+    const textnode = document.createTextNode("        ");
     option.appendChild(textnode);
     state_select.appendChild(option);
+    state_select.disabled = true;
   }
   else {
     for (e of state_list) {
@@ -1301,6 +1303,7 @@ function createStateOptions(country) {
       option.value = e;
       state_select.appendChild(option);
     }
+    state_select.disabled = false;
   }
   return state_list;
 }
@@ -1323,10 +1326,11 @@ function createCountyOptions(state) {
   }
   if (county_list.length == 0) {
     const option = document.createElement("option");
-    const textnode = document.createTextNode("-");
+    const textnode = document.createTextNode("        ");
     option.appendChild(textnode);
     option.value = e;
     county_select.appendChild(option);
+    county_select.disabled = true;
   }
   else {
     for (e of county_list) {
@@ -1336,6 +1340,7 @@ function createCountyOptions(state) {
       option.value = e;
       county_select.appendChild(option);
     }
+    county_select.disabled = false;
   }
   return county_list;
 }
