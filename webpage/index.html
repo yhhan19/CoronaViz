@@ -41,7 +41,7 @@
           integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
           crossorigin="anonymous"></script>
 
-  <link rel="stylesheet" href="js_buzz.css"/>
+  <link rel="stylesheet" href="js_buzz.css?v=1"/>
 </head>
 
 <body>
@@ -235,70 +235,45 @@
       </div>
 
       <div id="control_panel" class="col-md-4">
+       
         <div>
-          <h2>Download Controls</h2>
-
-        <label for="keyword">Keyword:</label>
-        <input type="text" id="keyword" value="coronavirus">
-          <br>
-
-        Data Range:
-        <input type="date" id="start_date" value="2020-01-01">
-        <input type="date" id="end_date">
-
-          <br>
-          <span class="btn btn-secondary" id="update" onclick="downloadData();">Download Data &raquo;</span>
-          <hr>
-        </div>
-
-        <div>
-          <h2>View Controls</h2>
-          <label for="country_select">View Country:</label>
+          <h2>Location Selection</h2>
+          <label for="country_select">Country:</label>
           <select id="country_select" onchange="setCountryView(this.value)"></select>
           <br>
-          <span class="btn btn-secondary" onclick="setMarylandView();">View Maryland</span>
-          <span class="btn btn-secondary" onclick="setVirginiaView();">View Virginia</span>
+          <label for="state_select">State (Province):</label>
+          <select id="state_select" onchange="setStateView(this.value)"></select>
           <br>
-          <label for="float_toggle">Hovering Box:</label>
-          <input type="checkbox" id="float_toggle" checked onclick="toggleFloatingBox();">
+          <label for="county_select">County (City):</label>
+          <select id="county_select" onchange="setCountyView(this.value)"></select>
+          <br>
+          <span hidden class="btn btn-secondary" onclick="setMarylandView();">View Maryland</span>
+          <span hidden class="btn btn-secondary" onclick="setVirginiaView();">View Virginia</span>
+          <br hidden>
+          <label hidden for="float_toggle">Hovering Box:</label>
+          <input hidden type="checkbox" id="float_toggle" checked onclick="toggleFloatingBox();">
           <hr>
         </div>
 
         <div>
           <h2>Animation Controls</h2>
+          Mode: 
+          <label for="window_animation">Window:</label>
+        <input type="radio" name="window_type" id="window_animation" checked onclick="setTotalAnimation(false);">
+        <label for="total_animation">Total:</label>
+        <input type="radio" name="window_type" id="total_animation" onclick="setTotalAnimation(true);">
+          <br>       
 
-        Animation Range: 
+        Range: 
         <input type="date" id="animation_start" onchange='setAnimationRange(this.valueAsDate, dataEndDate);'>
         <input type="date" id="animation_end" onchange='setAnimationRange(dataStartDate, this.valueAsDate);'>
           <br>
 
-        <label for="animate_window">Animation Window:</label>
+        <label for="animate_window">Window:</label>
         <input style="width: 25%;" value="7" type="number" id="animate_window" onchange="setAnimateWindowFromInput(this.value)" min="1"> days
+        <span id="animate_max" class="btn btn-secondary" onclick="toggleAnimateMax()">Maximum</span>  
+        <span id="customize" class="btn btn-secondary" onclick="toggleAnimateMax()" style="display: none;">Customize</span>
           <br>
-        <label for="animate_max">Maximum Windows:</label>
-        <input type="checkbox" id="animate_max" onclick="toggleAnimateMax()">
-
-          <br>
-        <label for="log">Log:</label>
-        <input type="radio" name="scale" id="log" checked onclick="setScale(0);">
-        <label for="line">Linear:</label>
-        <input type="radio" name="scale" id="line" onclick="setScale(1);">
-        <label for="line">Rate:</label>
-        <input type="radio" name="scale" id="rate" onclick="setScale(2);">
-          <br>
-
-        <label for="cumulative_animation">Cumulative:</label>
-        <input type="radio" name="animation_type" id="cumulative_animation" checked onclick="setAnimationType(false);">
-        <label for="daily_rate">Daily Rate:</label>
-        <input type="radio" name="animation_type" id="daily_rate" onclick="setAnimationType(true);">
-          <br>
-
-        <label for="window_animation">Window:</label>
-        <input type="radio" name="window_type" id="window_animation" checked onclick="setTotalAnimation(false);">
-        <label for="total_animation">Total:</label>
-        <input type="radio" name="window_type" id="total_animation" onclick="setTotalAnimation(true);">
-          <br>
-
 
         <label for="animate_step">Animation Step:</label>
         <select id="animate_step" onchange="setAnimateStep(this.value)">
@@ -335,15 +310,30 @@
           Confirmed: <span id="sidebar_confirmed">N/A</span><br>
           Deaths: <span id="sidebar_deaths">N/A</span><br>
           Recoveries: <span id="sidebar_recoveries">N/A</span><br>
-          Active: <span id="sidebar_active">N/A</span><br>
-          Incidence Rate: <span id="sidebar_incidence">N/A</span><br>
-          Mortality Rate: <span id="sidebar_mortality">N/A</span><br>
-          (Incidence rate = cases per 100,000 persons)
+          Active: <span id="sidebar_active">N/A</span> (confirmed - deaths - recoveries)<br>
+          Incidence Rate: <span id="sidebar_incidence">N/A</span> (confirmed per 100,000 persons)<br>
+          Mortality Rate: <span id="sidebar_mortality">N/A</span> (deaths over confirmed)<br>
+          Recovery Rate: <span id="sidebar_recoveryrate">N/A</span> (recoveries over deaths + recoveries)<br>
+          <label for="cumulative_animation">Cumulative:</label>
+          <input type="radio" name="animation_type" id="cumulative_animation" checked onclick="setAnimationType(false);">
+          <label for="daily_rate">Daily Rate:</label>
+          <input type="radio" name="animation_type" id="daily_rate" onclick="setAnimationType(true);">
+            <br>
           <hr>
         </div>
 
         <div>
           <h2> Animation Layers </h2>
+          View: 
+          <label for="default">Default:</label>
+          <input type="radio" name="scale" id="default" checked onclick="setScale(3);">
+          <label for="log">Log:</label>
+          <input type="radio" name="scale" id="log" onclick="setScale(0);">
+          <label for="line">Linear:</label>
+          <input type="radio" name="scale" id="line" onclick="setScale(1);">
+          <label for="rate">Rate:</label>
+          <input type="radio" name="scale" id="rate" onclick="setScale(2);">
+            <br>
           <div>
           <label for="news_data_checkbox">
             <div class="circle_news_small">1</div>
@@ -361,7 +351,7 @@
             <div hidden class="circle_twitter_large">100</div>
             Tweet Keywords:
           </label>
-          <input type="checkbox" id="twitter_data_checkbox" onclick="twitterLayer.togglePlotting();">
+          <input type="checkbox" id="twitter_data_checkbox" onclick="twitterLayer.togglePlotting();"> 
         </div>
 
         <table align="left">
@@ -372,12 +362,12 @@
                 <div hidden class="circle_confirmed_med">10</div>
                 <div hidden class="circle_confirmed_large">100</div>
                 Confirmed:
-                <input type="checkbox" id="confirmed_checkbox" checked onclick="jhuLayer.togglePlotting('confirmed');">
+                <input type="checkbox" id="confirmed_checkbox" onclick="jhuLayer.togglePlotting('confirmed');">
               </label>
               </div></td>
              <td><div>
-              &nbsp;Icon Size: 
-              <input type="range" min="1" max="100" value="50" class="slider_size" id="confirmed_size">
+              &nbsp;Icon Size: 10%
+              <input type="range" min="1" max="100" value="50" class="slider_size" id="confirmed_size"> 400%
               </div></td>
           </tr>
 
@@ -389,11 +379,11 @@
                 <div hidden class="circle_deaths_large">100</div>
                 Deaths:
               </label>
-              <input type="checkbox" id="deaths_checkbox" checked onclick="jhuLayer.togglePlotting('deaths');">
+              <input type="checkbox" id="deaths_checkbox" onclick="jhuLayer.togglePlotting('deaths');">
              </div></td>
             <td><div>
-              &nbsp;Icon Size: 
-          <input type="range" min="1" max="100" value="50" class="slider_size" id="deaths_size">
+              &nbsp;Icon Size: 10% 
+          <input type="range" min="1" max="100" value="50" class="slider_size" id="deaths_size"> 400%
         </div></td>
       </tr>
 
@@ -408,8 +398,8 @@
           <input type="checkbox" id="recoveries_checkbox" onclick="jhuLayer.togglePlotting('recoveries');">
          </div></td>
         <td><div>
-          &nbsp;Icon Size: 
-          <input type="range" min="1" max="100" value="50" class="slider_size" id="recoveries_size">
+          &nbsp;Icon Size: 10%
+          <input type="range" min="1" max="100" value="50" class="slider_size" id="recoveries_size"> 400%
         </div></td>
       </tr>
 
@@ -424,8 +414,8 @@
       <input type="checkbox" id="active_checkbox" onclick="jhuLayer.togglePlotting('active');">
      </div></td>
     <td><div>
-      &nbsp;Icon Size: 
-      <input type="range" min="1" max="100" value="50" class="slider_size" id="active_size">
+      &nbsp;Icon Size: 10%
+      <input type="range" min="1" max="100" value="50" class="slider_size" id="active_size"> 400%
     </div></td>
     </tr>
 
@@ -437,11 +427,11 @@
         <div hidden class="circle_incidence_large">100</div>
         Incidence Rate:
       </label>
-      <input type="checkbox" id="incidence_checkbox" onclick="jhuLayer.togglePlotting('incidence');">
+      <input type="checkbox" id="incidence_checkbox" checked onclick="jhuLayer.togglePlotting('incidence');">
      </div></td>
     <td><div>
-      &nbsp;Icon Size: 
-          <input type="range" min="1" max="100" value="50" class="slider_size" id="incidence_size">
+      &nbsp;Icon Size: 10%
+          <input type="range" min="1" max="100" value="50" class="slider_size" id="incidence_size"> 400%
           </div></td>
          </tr>
 
@@ -453,26 +443,59 @@
             <div hidden class="circle_mortality_large">100</div>
             Mortality Rate:
           </label>
-          <input type="checkbox" id="mortality_checkbox" onclick="jhuLayer.togglePlotting('mortality');">
+          <input type="checkbox" id="mortality_checkbox" checked onclick="jhuLayer.togglePlotting('mortality');">
          </div></td>
         <td><div>
-          &nbsp;Icon Size: 
-          <input type="range" min="1" max="100" value="50" class="slider_size" id="mortality_size">
+          &nbsp;Icon Size: 10%
+          <input type="range" min="1" max="100" value="50" class="slider_size" id="mortality_size"> 400%
           </div></td>
              </tr>
+
+             <tr>
+              <td><div>
+               <label for="recoveryrate_checkbox">
+                 <div class="circle_recoveryrate_small"> </div>
+                 <div hidden class="circle_recoveryrate_med">10</div>
+                 <div hidden class="circle_recoveryrate_large">100</div>
+                 Recovery Rate:
+               </label>
+               <input type="checkbox" id="recoveryrate_checkbox" onclick="jhuLayer.togglePlotting('recoveryrate');">
+              </div></td>
+             <td><div>
+               &nbsp;Icon Size: 10%
+               <input type="range" min="1" max="100" value="50" class="slider_size" id="recoveryrate_size"> 400%
+               </div></td>
+                  </tr>
        </table>
        <div style="clear:both;height:1px;"> </div> 
        <div>
        <span class="btn btn-secondary" id="reset_scale" onclick="resetScale();">Reset All Icon Size</span>
        </div>
         </div>
+        <hr>
+        <div>
+          <h2>Download Data</h2>
+
+        <label for="keyword">Keyword:</label>
+        <input type="text" id="keyword" value="coronavirus">
+          <br>
+
+        Range:
+        <input type="date" id="start_date" value="2020-01-01">
+        <input type="date" id="end_date">
+
+          <br>
+          <span class="btn btn-secondary" id="update" onclick="downloadData();">Download Data &raquo;</span>
+          <hr>
+        </div>
       </div>
+      
     </div>
   </div>
 </main>
 
-<script src="jhu_data.js?v=51"></script>
-<script src="bounding-boxes.js?v=4"></script>
-<script src="js_buzz.js?v=45"></script>
+<script src="jhu_data.js?v=52"></script>
+<script src="bounding-boxes.js?v=41"></script>
+<script src="js_buzz.js?v=47"></script>
 </body>
 </html>

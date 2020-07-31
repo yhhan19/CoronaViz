@@ -16,8 +16,10 @@ def convert_row(row_dict):
 
   lat = row_dict["Lat"]
   lng = row_dict["Long"]
+  l_1 = row_dict["Country/Region"]
+  l_2 = row_dict["Province/State"]
+  l_3 = ""
   
-
   # The us CSV has some entries  with 0,0 coordinates.
   # Ignore these
   if float(lat) == 0 and float(lng) == 0:
@@ -40,6 +42,9 @@ def convert_row(row_dict):
                'lat': lat,
                'lng': lng,
                'pop' : pop,
+               'l_1' : l_1,
+               'l_2' : l_2,
+               'l_3' : l_3,
                'time_series': time_series_list}
   else:
       return None
@@ -51,6 +56,9 @@ def convert_row_us(row_dict):
   lat = row_dict["Lat"]
   lng = row_dict["Long_"]
   pop = pop_dict[row_dict["Combined_Key"].replace(", ", ",")]
+  l_1 = "United States"
+  l_2 = row_dict["Province_State"]
+  l_3 = row_dict["Admin2"]
 
   # The us CSV has some entries  with 0,0 coordinates.
   # Ignore these
@@ -82,6 +90,9 @@ def convert_row_us(row_dict):
                'lat': lat,
                'lng': lng,
                'pop' : pop,
+               'l_1' : l_1,
+               'l_2' : l_2,
+               'l_3' : l_3,
                'time_series': time_series_list}
   else:
       return None
@@ -149,7 +160,10 @@ for i in range(0,len(confirmed)):
         'lat': confirmed_entry['lat'],
         'lng': confirmed_entry['lng'],
         'time_series': time_series,
-        'pop': confirmed_entry['pop']
+        'pop': confirmed_entry['pop'],
+        'l_1' : confirmed_entry['l_1'],
+        'l_2' : confirmed_entry['l_2'],
+        'l_3' : confirmed_entry['l_3']
     })
 
 

@@ -63,16 +63,35 @@ map.on('mousemove', function (e) {
       }
     }
   } else {
+      info._div.style.left = last_left + "px";
+      info._div.style.top = last_top + "px";
+
       info_bounds = info._div.getBoundingClientRect();
-      info._div.style.left = (map_bounds.right - 125) + "px";
-      info._div.style.top = "0px";
+
+      if(info_bounds.right > map_bounds.right) {
+        info._div.style.left = (last_left - (info_bounds.right - map_bounds.right)) + "px";
+      }
+      if(info_bounds.bottom > map_bounds.bottom) {
+        info._div.style.top = (last_top - (info_bounds.bottom - map_bounds.bottom)) + "px";
+      }
   }
   last_latlng = e.latlng;
   info.updateForMarker(getClosestMarker(e.latlng));
 });
 
+let last_left;
+let last_top;
+
 map.on('click', updateSidebarForEvent);
 map.on('dblclick', resetClickTimeout);
+map.on('contextmenu',  function (event) {
+  floating_box = !floating_box;
+  if (! floating_box) {
+    last_left = Math.round(event.containerPoint.x);
+    last_top = Math.round(event.containerPoint.y);
+  }
+  return false;
+});
 
 // Hack so that sidebar is not set of double clicks
 map.clicked = 0;
@@ -161,7 +180,8 @@ info.update = function (confirmed, deaths, recoveries, active, placenames, popul
       "Recoveries:" + recoveries + "<br>" +
       "Active:" + active + "<br>" +
       "Incidence Rate: " + percent(confirmed, population) + "<br>" +
-      "Mortality Rate: " + percent2(deaths, confirmed) + "<br>";
+      "Mortality Rate: " + percent2(deaths, confirmed) + "<br>" + 
+      "Recovery Rate: " + percent2(recoveries, deaths + recoveries) + "<br>";
 };
 
 function placenamesString(placenames) {
@@ -192,8 +212,9 @@ function updateSidebarInfo(confirmed, deaths, recoveries, active, placenames, po
   document.getElementById("sidebar_active").innerHTML = normalizeCount(active);
   document.getElementById("sidebar_location").innerHTML = placenamesString(placenames);
   document.getElementById("sidebar_population").innerHTML = population;
-  document.getElementById("sidebar_incidence").innerHTML = percent(normalizeCount(confirmed), population);
-  document.getElementById("sidebar_mortality").innerHTML = percent2(normalizeCount(deaths), confirmed)
+  document.getElementById("sidebar_incidence").innerHTML = percent(confirmed, population);
+  document.getElementById("sidebar_mortality").innerHTML = percent2(deaths, confirmed);
+  document.getElementById("sidebar_recoveryrate").innerHTML = percent2(recoveries, deaths * 1.0 + recoveries);
 }
 
 function getMarkerStatistic(marker) {
@@ -244,6 +265,9 @@ info.updateForMarker = function (marker) {
 info.clear();
 
 const country_select = document.getElementById("country_select");
+const state_select = document.getElementById("state_select");
+const county_select = document.getElementById("county_select");
+
 const sorted_options = Object.entries(bounding_boxes).sort(function (a, b) {
   return a[1][0].localeCompare(b[1][0])
 });
@@ -260,6 +284,30 @@ for (let e of sorted_options) {
   country_select.appendChild(option);
 }
 
+var country_dict = new Map();
+var state_dict = new Map();
+var state_bb_dict = new Map();
+var county_bb_dict = new Map();
+
+for (let e of jhuData) {
+  if (country_dict[e.l_1] == undefined) {
+    country_dict[e.l_1] = [];
+  }
+  if (e.l_2 != "") {
+    if (state_dict[e.l_2] == undefined) {
+      country_dict[e.l_1].push(e.l_2);
+      state_dict[e.l_2] = [];
+      state_bb_dict[e.l_2] = [[e.lat * 1.0 + 1.6, e.lng - 1.6], [e.lat -  1.6, e.lng * 1.0 + 1.6]];
+    }
+  }
+  if (e.l_3 != "") {
+    if (county_bb_dict[e.l_3] == undefined) {
+      state_dict[e.l_2].push(e.l_3);
+      county_bb_dict[e.l_3] = [[e.lat * 1.0 + 0.4, e.lng - 0.4], [e.lat -  0.4, e.lng * 1.0 + 0.4]];
+    }
+  }
+}
+
 let dataEndDate;
 let dataStartDate;
 let displayStartDate;
@@ -271,7 +319,6 @@ let animateSpeed = 100;
 let dailyRate = document.getElementById("daily_rate").checked;
 let animation_paused = false;
 let log_scale = document.getElementById("log").checked;
-let pop_scale = document.getElementById("rate").checked;
 let tempAnimateWindow = 7 * 60 * 24;
 let animate_window_max = document.getElementById("animate_max").checked
 if(animate_window_max) {
@@ -318,6 +365,12 @@ slider_range.slider({
           }
           break;
         case 1:
+          const displayStartMins = ui.values[0];
+          const displayEndMins = ui.values[1];
+          animateWindow = displayEndMins - displayStartMins;
+          document.getElementById('animate_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
+          setDisplayedDateRange(displayStartMins, displayEndMins);
+          /*
           if (ui.values[1] - animateWindow >= dateToEpochMins(dataStartDate)) {
             const displayStartMins = ui.values[1] - animateWindow;
             const displayEndMins = ui.values[1];
@@ -330,6 +383,7 @@ slider_range.slider({
             animateWindow = displayEndMins - displayStartMins;
             document.getElementById('animate_window').value = Math.floor((displayEndMins - displayStartMins)/(60*24));
           }
+          */
           break;
       }
     }
@@ -337,8 +391,8 @@ slider_range.slider({
 });
 
 function calcScale(value) {
-  const maxScale = 10.0;
-  const minScale = 0.5;
+  const maxScale = 4.0;
+  const minScale = 0.1;
   if (value <= 50) {
     return value * (1 - minScale) / 50 + minScale;
   }
@@ -389,13 +443,21 @@ active_slider.oninput = function() {
 }
 let active_scale = 1;
 
+const recoveryrate_slider = document.getElementById('recoveryrate_size');
+recoveryrate_slider.oninput = function() {
+  recoveryrate_scale = calcScale(this.value);
+  setDisplayedDateRange(displayStartDate, displayEndDate);
+}
+let recoveryrate_scale = 1;
+
 function resetScale() {
   document.getElementById("mortality_size").value = 
   document.getElementById("incidence_size").value =
   document.getElementById("confirmed_size").value =
   document.getElementById("deaths_size").value = 
   document.getElementById("recoveries_size").value = 
-  document.getElementById("active_size").value = "50";
+  document.getElementById("active_size").value = 
+  document.getElementById("recoveryrate_size").value = "50";
   mortality_scale = incidence_scale = deaths_scale = confirmed_scale = recoveries_scale = active_scale = 1;
   setDisplayedDateRange(displayStartDate, displayEndDate);
 }
@@ -549,7 +611,7 @@ class NewsStandDataLayer {
 }
 
 class JHUDataLayer {
-  constructor(plottingConfirmed, plottingDeaths, plottingRecoveries, plottingActive, plottingIncidence, plottingMortality) {
+  constructor(plottingConfirmed, plottingDeaths, plottingRecoveries, plottingActive, plottingIncidence, plottingMortality, plottingRecoveryRate) {
     this.timeSeries = jhuData;
 
     const that = this;
@@ -590,7 +652,8 @@ class JHUDataLayer {
       recoveries: {plotting: plottingRecoveries},
       active: {plotting: plottingActive},
       incidence: {plotting: plottingIncidence},
-      mortality: {plotting: plottingMortality}
+      mortality: {plotting: plottingMortality},
+      recoveryrate: {plotting: plottingRecoveryRate}
     };
     if (this.plottingAny()) {
       map.addLayer(this.markers);
@@ -735,6 +798,17 @@ class JHUDataLayer {
           'width: ' + mortalitySize + 'px;' +
           'height: ' + mortalitySize + 'px;' +
           'border: solid red ;';
+
+      const recoveryRateSize = markerSize2(recovered, recovered + deaths, 2);
+      const recoveryRateStyle =
+          'position: absolute;' +
+          'border-radius: 50%;' +
+          'top: 50%;' +
+          'left: 50%;' +
+          'margin: ' + (-recoveryRateSize / 2) + 'px 0px 0px ' + (-recoveryRateSize / 2) + 'px;' +
+          'width: ' + recoveryRateSize + 'px;' +
+          'height: ' + recoveryRateSize + 'px;' +
+          'border: solid green ;';
       
       if ((confirmed + deaths + recovered) === 0) {
         confirmedStyle += 'display: none;';
@@ -742,7 +816,8 @@ class JHUDataLayer {
 
       return new L.DivIcon({
         html: '<div class="circle" style="' + confirmedStyle + '">' +
-            (this.subLayers.incidence.plotting && deaths > 0 ? '<div class="circle" style="' + incidenceStyle + '"></div>' : '') +
+            (this.subLayers.recoveryrate.plotting && recovered > 0 ? '<div class="circle" style="' + recoveryRateStyle + '"></div>' : '') +
+            (this.subLayers.incidence.plotting && confirmed > 0 ? '<div class="circle" style="' + incidenceStyle + '"></div>' : '') +
             (this.subLayers.mortality.plotting && deaths > 0 ? '<div class="circle" style="' + mortalityStyle + '"></div>' : '') +
             (this.subLayers.deaths.plotting && deaths > 0 ? '<div class="circle" style="' + deathsStyle + '"></div>' : '') +
             (this.subLayers.recoveries.plotting && recovered > 0 ? '<div class="circle" style="' + recoveredStyle + '"></div>' : '') +
@@ -760,7 +835,8 @@ const recoveredSelected = document.getElementById("recoveries_checkbox").checked
 const activeSelected = document.getElementById("active_checkbox").checked;
 const incidenceSelected = document.getElementById("incidence_checkbox").checked;
 const mortalitySelected = document.getElementById("mortality_checkbox").checked;
-const jhuLayer = new JHUDataLayer(confirmedCasesSelected, deathsSelected, recoveredSelected, activeSelected, incidenceSelected, mortalitySelected);
+const recoveryRateSelected = document.getElementById("recoveryrate_checkbox").checked;
+const jhuLayer = new JHUDataLayer(confirmedCasesSelected, deathsSelected, recoveredSelected, activeSelected, incidenceSelected, mortalitySelected, recoveryRateSelected);
 
 const newsDataSelected = document.getElementById("news_data_checkbox").checked;
 const newsLayer = new NewsStandDataLayer(newsDataSelected,
@@ -909,7 +985,7 @@ async function terminateAnimation() {
 
 function normalizeCount(clusterSize) {
   if (dailyRate) {
-    return ((clusterSize / animateWindow) * (60 * 24)).toFixed(1);
+    return ((clusterSize / animateWindow) * (60 * 24)).toFixed(2);
   } else {
     return clusterSize;
   }
@@ -922,13 +998,7 @@ function markerSize(clusterSize, type) {
       return 0;
     } else {
       const size = 40 + Math.log(2 * clusterSize) ** 2;
-      switch (type) {
-        case -1: return size;
-        case 0: return size * confirmed_scale;
-        case 1: return size * deaths_scale;
-        case 2: return size * recoveries_scale;
-        case 3: return size * active_scale;
-      }
+      return size;
     }
   }
   else {
@@ -949,12 +1019,12 @@ function markerSize(clusterSize, type) {
     const max_range = max_daily * (windowSize / (60 * 24));
 
     const max_size = 1000;
-    const size = 10 + max_size * (clusterSize / max_range);
+    const size = max_size * (clusterSize / max_range);
     switch (type) {
-      case 0: return size * confirmed_scale;
-      case 1: return size * deaths_scale;
-      case 2: return size * recoveries_scale;
-      case 3: return size * active_scale;
+      case 0: return 10 + size * confirmed_scale;
+      case 1: return 10 + size * deaths_scale;
+      case 2: return 10 + size * recoveries_scale;
+      case 3: return 10 + size * active_scale;
     }
   }
 }
@@ -971,38 +1041,53 @@ function markerSize2(clusterSize, totalSize, type) {
       }
       if (dataEndDate == undefined) return 0;
       const ratio = (dateToEpochMins(dataEndDate) - dateToEpochMins(dataStartDate)) / windowSize;
-      const scale = Math.log(ratio) + 1;
-      return (10 + clusterSize / (totalSize / 10000) * scale) * incidence_scale;
+      const scale = 1;
+      return 10 + clusterSize / (totalSize / 10000) * scale * incidence_scale;
     }
     else if (type == 1) {
       var percent = clusterSize / totalSize;
       if (percent > 0.5) percent = 0.5;
       const maxSize = 250;
-      return (10 + maxSize * percent) * mortality_scale;
+      return 10 + maxSize * percent * mortality_scale;
+    }
+    else if (type == 2) {
+      var percent = clusterSize / totalSize;
+      const maxSize = 50;
+      return 10 + maxSize * percent * recoveryrate_scale;
     }
   }
 }
 
 function setScale(type) {
-  if (type == 2) {
-    pop_scale = true;
+  if (type == 3) {
     uncheckPlotting('confirmed');
     uncheckPlotting('deaths');
     uncheckPlotting('recoveries');
     uncheckPlotting('active');
     checkPlotting('incidence');
     checkPlotting('mortality');
+    uncheckPlotting('recoveryrate');
+  }
+  else if (type == 2) {
+    uncheckPlotting('confirmed');
+    uncheckPlotting('deaths');
+    uncheckPlotting('recoveries');
+    uncheckPlotting('active');
+    checkPlotting('incidence');
+    checkPlotting('mortality');
+    checkPlotting('recoveryrate');
   }
   else {
-    pop_scale = false;
     log_scale = (type == 0);
     checkPlotting('confirmed');
     checkPlotting('deaths');
-    uncheckPlotting('recoveries');
-    uncheckPlotting('active');
+    checkPlotting('recoveries');
+    checkPlotting('active');
     uncheckPlotting('incidence');
     uncheckPlotting('mortality');
+    uncheckPlotting('recoveryrate');
   }
+
   setDisplayedDateRange(displayStartDate, displayEndDate);
 }
 
@@ -1058,6 +1143,8 @@ function setAnimateWindow(size) {
 function toggleAnimateMax() {
   animate_window_max = !animate_window_max;
   if (animate_window_max) {
+    document.getElementById("animate_max").style.display = "none";
+    document.getElementById("customize").style.display = "";
     document.getElementById('animate_window').disabled = true;
     tempAnimateWindow = animateWindow;
     const startDate = dateToEpochMins(dataStartDate);
@@ -1067,7 +1154,10 @@ function toggleAnimateMax() {
     //displayStartDate = dataStartDate;
     //setAnimateWindow(dateToEpochMins(dataEndDate) - dateToEpochMins(dataStartDate));
   } else {
-    document.getElementById('animate_window').disabled = false;
+    document.getElementById("animate_max").style.display = "";
+    document.getElementById("customize").style.display = "none";
+    if (! totalAnimation)
+      document.getElementById('animate_window').disabled = false;
     setAnimateWindow(tempAnimateWindow);
   }
 }
@@ -1167,9 +1257,93 @@ function stepBack() {
 }
 
 function setCountryView(country_code) {
+  const state_list = createStateOptions(bounding_boxes[country_code][0]);
+  while (county_select.lastElementChild) {
+    county_select.removeChild(county_select.lastElementChild);
+  }
+  const option = document.createElement("option");
+  const textnode = document.createTextNode("-");
+  option.appendChild(textnode);
+  county_select.appendChild(option);
   const bb = bounding_boxes[country_code][1];
   map.fitBounds([[bb[1], bb[0]], [bb[3], bb[2]]]);
   const name = sorted_options.find(e => e[0] == country_code)[1][0];
+  if (state_list.length == 0) {
+    selectMarkerByName(name);
+  }
+  else {
+    county_list = state_dict[state_list[0]];
+    if (county_list.length == 0) {
+      selectMarkerByName(state_list[0]);
+    }
+    else {
+      selectMarkerByName(county_list[0] + ", " + state_list[0]);
+    }
+  }
+}
+
+function createStateOptions(country) {
+  state_list = country_dict[country];
+  while (state_select.lastElementChild) {
+    state_select.removeChild(state_select.lastElementChild);
+  }
+  if (state_list.length == 0) {
+    const option = document.createElement("option");
+    const textnode = document.createTextNode("-");
+    option.appendChild(textnode);
+    state_select.appendChild(option);
+  }
+  else {
+    for (e of state_list) {
+      const option = document.createElement("option");
+      const textnode = document.createTextNode(e);
+      option.appendChild(textnode);
+      option.value = e;
+      state_select.appendChild(option);
+    }
+  }
+  return state_list;
+}
+
+function setStateView(state) {
+  const county_list = createCountyOptions(state);
+  map.fitBounds(state_bb_dict[state]);
+  if (county_list.length == 0) {
+    selectMarkerByName(state);
+  }
+  else {
+    selectMarkerByName(county_list[0] + ", " + state);
+  }
+}
+
+function createCountyOptions(state) {
+  county_list = state_dict[state];
+  while (county_select.lastElementChild) {
+    county_select.removeChild(county_select.lastElementChild);
+  }
+  if (county_list.length == 0) {
+    const option = document.createElement("option");
+    const textnode = document.createTextNode("-");
+    option.appendChild(textnode);
+    option.value = e;
+    county_select.appendChild(option);
+  }
+  else {
+    for (e of county_list) {
+      const option = document.createElement("option");
+      const textnode = document.createTextNode(e);
+      option.appendChild(textnode);
+      option.value = e;
+      county_select.appendChild(option);
+    }
+  }
+  return county_list;
+}
+
+function setCountyView(county) {
+  map.fitBounds(county_bb_dict[county]);
+  const state = document.getElementById("state_select").value;
+  const name = county + ", " + state;
   selectMarkerByName(name);
 }
 
@@ -1196,10 +1370,6 @@ function setAnimationRange(start, end) {
   slider_range.slider("option", "max", max);
 
   setDisplayedDateRange(min, min + animatewindow);
-}
-
-function toggleFloatingBox() {
-  floating_box = !floating_box;
 }
 
 function setTotalAnimation(total) {
